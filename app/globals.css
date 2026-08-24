@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f3ed;
-  --foreground: #171713;
+  --background: #f8f7f2;
+  --foreground: #11110f;
 }
 
 @theme inline {
@@ -24,18 +24,211 @@ textarea {
   font: inherit;
 }
 
+.panel {
+  border: 1px solid #ded9cd;
+  border-radius: 8px;
+  background: rgba(255, 254, 249, 0.92);
+  box-shadow: 0 18px 45px rgba(31, 27, 20, 0.05);
+}
+
 .field {
-  min-height: 2.75rem;
+  min-height: 2.625rem;
   width: 100%;
-  border-radius: 0.375rem;
-  border: 1px solid #d9d2c4;
-  background: #fffdf8;
+  border-radius: 7px;
+  border: 1px solid #d8d2c6;
+  background: #fffefa;
   padding: 0.625rem 0.75rem;
-  color: #171713;
+  color: #11110f;
   outline: none;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .field:focus {
-  border-color: #217a5b;
-  box-shadow: 0 0 0 3px rgba(33, 122, 91, 0.14);
+  border-color: #24734f;
+  box-shadow: 0 0 0 3px rgba(36, 115, 79, 0.13);
+}
+
+.field:hover {
+  border-color: #bfb7a9;
+}
+
+.primary-button,
+.secondary-button,
+.delete-button,
+.month-control button {
+  min-height: 2.625rem;
+  border-radius: 7px;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.primary-button:hover,
+.secondary-button:hover,
+.delete-button:hover,
+.month-control button:hover {
+  transform: translateY(-1px);
+}
+
+.primary-button {
+  background: #11110f;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 650;
+  box-shadow: 0 14px 24px rgba(17, 17, 15, 0.12);
+}
+
+.primary-button:hover {
+  background: #2b2924;
+}
+
+.secondary-button,
+.delete-button {
+  border: 1px solid #d8d2c6;
+  background: #fffefa;
+  color: #4f4a41;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.secondary-button {
+  padding: 0 0.875rem;
+}
+
+.delete-button {
+  min-height: 2rem;
+  padding: 0 0.625rem;
+}
+
+.secondary-button:hover,
+.delete-button:hover {
+  background: #f3f0e9;
+}
+
+.month-control {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #ded9cd;
+  border-radius: 8px;
+  background: #fffefa;
+  padding: 0.375rem;
+  box-shadow: 0 14px 30px rgba(31, 27, 20, 0.05);
+}
+
+.month-control button {
+  width: 2.625rem;
+  border: 1px solid transparent;
+  background: #f1eee7;
+  color: #11110f;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.month-control label {
+  display: grid;
+  gap: 0.125rem;
+  padding: 0 0.35rem;
+  color: #69655c;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.month-control input {
+  border: 0;
+  background: transparent;
+  color: #11110f;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  outline: none;
+}
+
+.mini-card {
+  animation: rise 420ms ease both;
+  border: 1px solid #e5dfd4;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #fffefa;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.mini-card:hover,
+.table-row:hover {
+  transform: translateY(-1px);
+}
+
+.mini-card:hover {
+  border-color: #d4ccbf;
+  box-shadow: 0 12px 24px rgba(31, 27, 20, 0.06);
+}
+
+.bar-fill {
+  height: 0.375rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #bd4938, #e0a138);
+  transition: width 420ms ease;
+}
+
+.type-pill {
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.type-pill.income {
+  background: #e4f4eb;
+  color: #24734f;
+}
+
+.type-pill.expense {
+  background: #f8e3dd;
+  color: #a33b2b;
+}
+
+.table-row {
+  animation: rise 360ms ease both;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease;
+}
+
+.table-row:hover {
+  background: #fffdf6;
+}
+
+.animate-rise {
+  animation: rise 460ms ease both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
 }
