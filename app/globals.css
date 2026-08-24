@@ -26,7 +26,7 @@ textarea {
 
 .panel {
   border: 1px solid #ded9cd;
-  border-radius: 8px;
+  border-radius: 18px;
   background: rgba(255, 254, 249, 0.92);
   box-shadow: 0 18px 45px rgba(31, 27, 20, 0.05);
 }
@@ -34,7 +34,7 @@ textarea {
 .field {
   min-height: 2.625rem;
   width: 100%;
-  border-radius: 7px;
+  border-radius: 14px;
   border: 1px solid #d8d2c6;
   background: #fffefa;
   padding: 0.625rem 0.75rem;
@@ -60,7 +60,7 @@ textarea {
 .delete-button,
 .month-control button {
   min-height: 2.625rem;
-  border-radius: 7px;
+  border-radius: 999px;
   transition:
     transform 180ms ease,
     background-color 180ms ease,
@@ -97,12 +97,12 @@ textarea {
 }
 
 .secondary-button {
-  padding: 0 0.875rem;
+  padding: 0 1rem;
 }
 
 .delete-button {
   min-height: 2rem;
-  padding: 0 0.625rem;
+  padding: 0 0.75rem;
 }
 
 .secondary-button:hover,
@@ -116,7 +116,7 @@ textarea {
   align-items: center;
   gap: 0.5rem;
   border: 1px solid #ded9cd;
-  border-radius: 8px;
+  border-radius: 999px;
   background: #fffefa;
   padding: 0.375rem;
   box-shadow: 0 14px 30px rgba(31, 27, 20, 0.05);
@@ -153,7 +153,7 @@ textarea {
 .mini-card {
   animation: rise 420ms ease both;
   border: 1px solid #e5dfd4;
-  border-radius: 8px;
+  border-radius: 16px;
   padding: 1rem;
   background: #fffefa;
   transition:
@@ -180,7 +180,7 @@ textarea {
 }
 
 .type-pill {
-  border-radius: 6px;
+  border-radius: 999px;
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
   font-weight: 700;

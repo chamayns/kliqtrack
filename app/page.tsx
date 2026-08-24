@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useMemo, useRef, useState } from "react";
 
 type TransactionType = "Income" | "Expense";
 
@@ -36,31 +36,6 @@ const paymentMethods = ["Bank Transfer", "Cash", "Card", "Other"];
 
 const today = new Date().toISOString().slice(0, 10);
 const currentMonth = today.slice(0, 7);
-
-const seedTransactions: Transaction[] = [
-  {
-    id: "seed-1",
-    date: today,
-    description: "Example: 40 acrylic pieces",
-    type: "Expense",
-    category: "Acrylic (Print & Cut)",
-    qty: 40,
-    amount: 0,
-    paymentMethod: "Bank Transfer",
-    notes: "Enter actual invoice amount",
-  },
-  {
-    id: "seed-2",
-    date: today,
-    description: "Restaurant / customer sale",
-    type: "Income",
-    category: "Sales",
-    qty: 1,
-    amount: 0,
-    paymentMethod: "Bank Transfer",
-    notes: "",
-  },
-];
 
 const initialForm = {
   date: today,
@@ -98,26 +73,17 @@ function moveMonth(month: string, offset: number) {
 }
 
 export default function Home() {
-  const [transactions, setTransactions] = useState<Transaction[]>(seedTransactions);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [form, setForm] = useState(initialForm);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [dataFileName, setDataFileName] = useState("No data file loaded");
   const [filters, setFilters] = useState<Filters>({
     query: "",
     type: "All",
     category: "All",
     paymentMethod: "All",
   });
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem("kliq-transactions");
-    if (saved) {
-      setTransactions(JSON.parse(saved));
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem("kliq-transactions", JSON.stringify(transactions));
-  }, [transactions]);
 
   const monthTransactions = useMemo(
     () => transactions.filter((item) => item.date.startsWith(selectedMonth)),
@@ -220,6 +186,65 @@ export default function Home() {
     setTransactions((current) => current.filter((item) => item.id !== id));
   }
 
+  function saveDataFile() {
+    const data = {
+      exportedAt: new Date().toISOString(),
+      transactions,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `kliq-data-${selectedMonth}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setDataFileName(`Saved kliq-data-${selectedMonth}.json`);
+  }
+
+  function loadDataFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        const records = Array.isArray(parsed) ? parsed : parsed.transactions;
+
+        if (!Array.isArray(records)) {
+          throw new Error("Missing transactions");
+        }
+
+        const nextTransactions = records.map((item: Partial<Transaction>, index: number) => ({
+          id: item.id || crypto.randomUUID(),
+          date: item.date || today,
+          description: item.description || `Imported transaction ${index + 1}`,
+          type: item.type === "Income" ? "Income" : "Expense",
+          category: item.category || expenseCategories[0],
+          qty: Number(item.qty) || 1,
+          amount: Number(item.amount) || 0,
+          paymentMethod: item.paymentMethod || "Other",
+          notes: item.notes || "",
+        }));
+
+        setTransactions(nextTransactions);
+        if (nextTransactions[0]?.date) {
+          setSelectedMonth(nextTransactions[0].date.slice(0, 7));
+        }
+        setDataFileName(file.name);
+      } catch {
+        setDataFileName("Could not read that JSON file");
+      } finally {
+        event.target.value = "";
+      }
+    };
+    reader.readAsText(file);
+  }
+
   function exportCsv() {
     const header = [
       "Date",
@@ -259,46 +284,58 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#f8f7f2] text-[#11110f]">
       <section className="mx-auto max-w-7xl px-4 pb-6 pt-5 sm:px-6 lg:px-8">
-        <div className="animate-rise flex flex-col gap-6 border-b border-[#ded9cd] pb-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-              <img
-                src="/kliq-logo.png"
-                alt="KLIQ"
-                className="h-12 w-auto shrink-0 object-contain sm:h-14"
-              />
-              <h1 className="text-2xl font-semibold tracking-normal sm:text-4xl">
-                Business budget and cash tracker
-              </h1>
-            </div>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#69655c]">
-              Track sales, acrylic costs, NFC chips, transportation, and other expenses in one tidy place.
-            </p>
-          </div>
+        <div className="animate-rise flex flex-col gap-5 border-b border-[#ded9cd] pb-6 lg:flex-row lg:items-center lg:justify-between">
+          <img
+            src="/kliq-logo.png"
+            alt="KLIQ"
+            className="h-14 w-auto shrink-0 object-contain sm:h-16"
+          />
 
-          <div className="month-control">
-            <button
-              type="button"
-              aria-label="Previous month"
-              onClick={() => setSelectedMonth((month) => moveMonth(month, -1))}
-            >
-              {"<"}
-            </button>
-            <label>
-              <span>Month</span>
+          <div className="flex flex-col gap-3 lg:items-end">
+            <div className="flex flex-wrap gap-2">
               <input
-                type="month"
-                value={selectedMonth}
-                onChange={(event) => setSelectedMonth(event.target.value)}
+                ref={fileInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={loadDataFile}
               />
-            </label>
-            <button
-              type="button"
-              aria-label="Next month"
-              onClick={() => setSelectedMonth((month) => moveMonth(month, 1))}
-            >
-              {">"}
-            </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="secondary-button"
+              >
+                Load JSON
+              </button>
+              <button type="button" onClick={saveDataFile} className="secondary-button">
+                Save JSON
+              </button>
+            </div>
+            <div className="month-control">
+              <button
+                type="button"
+                aria-label="Previous month"
+                onClick={() => setSelectedMonth((month) => moveMonth(month, -1))}
+              >
+                {"<"}
+              </button>
+              <label>
+                <span>Month</span>
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(event) => setSelectedMonth(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                aria-label="Next month"
+                onClick={() => setSelectedMonth((month) => moveMonth(month, 1))}
+              >
+                {">"}
+              </button>
+            </div>
+            <span className="text-xs font-medium text-[#69655c]">{dataFileName}</span>
           </div>
         </div>
       </section>
