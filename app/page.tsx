@@ -310,6 +310,9 @@ export default function Home() {
               <button type="button" onClick={saveDataFile} className="secondary-button">
                 Save JSON
               </button>
+              <button type="button" onClick={exportCsv} className="secondary-button">
+                Export CSV
+              </button>
             </div>
             <div className="month-control">
               <button
