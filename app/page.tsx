@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type TransactionType = "Income" | "Expense";
 
@@ -14,6 +14,18 @@ type Transaction = {
   amount: number;
   paymentMethod: string;
   notes: string;
+};
+
+type SupabaseTransaction = {
+  id: string;
+  transaction_date: string;
+  description: string;
+  transaction_type: TransactionType;
+  category: string;
+  qty: number;
+  amount: number;
+  payment_method: string;
+  notes: string | null;
 };
 
 type Filters = {
@@ -36,6 +48,9 @@ const paymentMethods = ["Bank Transfer", "Cash", "Card", "Other"];
 
 const today = new Date().toISOString().slice(0, 10);
 const currentMonth = today.slice(0, 7);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 const initialForm = {
   date: today,
@@ -72,18 +87,86 @@ function moveMonth(month: string, offset: number) {
   return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function fromSupabase(item: SupabaseTransaction): Transaction {
+  return {
+    id: item.id,
+    date: item.transaction_date,
+    description: item.description,
+    type: item.transaction_type,
+    category: item.category,
+    qty: item.qty,
+    amount: item.amount,
+    paymentMethod: item.payment_method,
+    notes: item.notes || "",
+  };
+}
+
+async function supabaseRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase is not configured");
+  }
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${supabaseAnonKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+      ...init?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || "Supabase request failed");
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export default function Home() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [form, setForm] = useState(initialForm);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-  const [dataFileName, setDataFileName] = useState("No data file loaded");
   const [filters, setFilters] = useState<Filters>({
     query: "",
     type: "All",
     category: "All",
     paymentMethod: "All",
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [status, setStatus] = useState(
+    isSupabaseConfigured ? "Ready to sync with Supabase" : "Add Supabase env vars to enable saving",
+  );
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+
+    void loadTransactions();
+  }, []);
+
+  async function loadTransactions() {
+    try {
+      setIsLoading(true);
+      setStatus("Loading transactions...");
+      const records = await supabaseRequest<SupabaseTransaction[]>(
+        "transactions?select=*&order=transaction_date.desc,created_at.desc",
+      );
+      setTransactions(records.map(fromSupabase));
+      setStatus("Synced with Supabase");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not load transactions");
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   const monthTransactions = useMemo(
     () => transactions.filter((item) => item.date.startsWith(selectedMonth)),
@@ -148,101 +231,72 @@ export default function Home() {
     setForm((current) => ({ ...current, [name]: value }));
   }
 
-  function addTransaction(event: FormEvent<HTMLFormElement>) {
+  async function addTransaction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const amount = Number(form.amount);
     const qty = Number(form.qty) || 1;
 
+    if (!isSupabaseConfigured) {
+      setStatus("Add Supabase env vars before saving transactions");
+      return;
+    }
+
     if (!form.description.trim() || Number.isNaN(amount) || amount < 0) {
+      setStatus("Add a description and valid amount");
       return;
     }
 
-    setTransactions((current) => [
-      {
-        id: crypto.randomUUID(),
-        date: form.date,
-        description: form.description.trim(),
-        type: form.type,
-        category: form.category,
-        qty,
-        amount,
-        paymentMethod: form.paymentMethod,
-        notes: form.notes.trim(),
-      },
-      ...current,
-    ]);
-    setSelectedMonth(form.date.slice(0, 7));
+    try {
+      setIsLoading(true);
+      setStatus("Saving transaction...");
+      const [saved] = await supabaseRequest<SupabaseTransaction[]>("transactions", {
+        method: "POST",
+        body: JSON.stringify({
+          transaction_date: form.date,
+          description: form.description.trim(),
+          transaction_type: form.type,
+          category: form.category,
+          qty,
+          amount,
+          payment_method: form.paymentMethod,
+          notes: form.notes.trim() || null,
+        }),
+      });
 
-    setForm((current) => ({
-      ...initialForm,
-      date: current.date,
-      type: current.type,
-      category: categoryOptions(current.type)[0],
-      paymentMethod: current.paymentMethod,
-    }));
+      setTransactions((current) => [fromSupabase(saved), ...current]);
+      setSelectedMonth(form.date.slice(0, 7));
+      setForm((current) => ({
+        ...initialForm,
+        date: current.date,
+        type: current.type,
+        category: categoryOptions(current.type)[0],
+        paymentMethod: current.paymentMethod,
+      }));
+      setStatus("Saved to Supabase");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not save transaction");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  function removeTransaction(id: string) {
-    setTransactions((current) => current.filter((item) => item.id !== id));
-  }
-
-  function saveDataFile() {
-    const data = {
-      exportedAt: new Date().toISOString(),
-      transactions,
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `kliq-data-${selectedMonth}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    setDataFileName(`Saved kliq-data-${selectedMonth}.json`);
-  }
-
-  function loadDataFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) {
+  async function removeTransaction(id: string) {
+    if (!isSupabaseConfigured) {
+      setStatus("Add Supabase env vars before deleting transactions");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result));
-        const records = Array.isArray(parsed) ? parsed : parsed.transactions;
-
-        if (!Array.isArray(records)) {
-          throw new Error("Missing transactions");
-        }
-
-        const nextTransactions = records.map((item: Partial<Transaction>, index: number) => ({
-          id: item.id || crypto.randomUUID(),
-          date: item.date || today,
-          description: item.description || `Imported transaction ${index + 1}`,
-          type: item.type === "Income" ? "Income" : "Expense",
-          category: item.category || expenseCategories[0],
-          qty: Number(item.qty) || 1,
-          amount: Number(item.amount) || 0,
-          paymentMethod: item.paymentMethod || "Other",
-          notes: item.notes || "",
-        }));
-
-        setTransactions(nextTransactions);
-        if (nextTransactions[0]?.date) {
-          setSelectedMonth(nextTransactions[0].date.slice(0, 7));
-        }
-        setDataFileName(file.name);
-      } catch {
-        setDataFileName("Could not read that JSON file");
-      } finally {
-        event.target.value = "";
-      }
-    };
-    reader.readAsText(file);
+    try {
+      setIsLoading(true);
+      setStatus("Deleting transaction...");
+      await supabaseRequest(`transactions?id=eq.${id}`, { method: "DELETE" });
+      setTransactions((current) => current.filter((item) => item.id !== id));
+      setStatus("Deleted from Supabase");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not delete transaction");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   function exportCsv() {
@@ -293,22 +347,8 @@ export default function Home() {
 
           <div className="flex flex-col gap-3 lg:items-end">
             <div className="flex flex-wrap gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={loadDataFile}
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="secondary-button"
-              >
-                Load JSON
-              </button>
-              <button type="button" onClick={saveDataFile} className="secondary-button">
-                Save JSON
+              <button type="button" onClick={loadTransactions} className="secondary-button" disabled={isLoading}>
+                Refresh
               </button>
               <button type="button" onClick={exportCsv} className="secondary-button">
                 Export CSV
@@ -338,7 +378,7 @@ export default function Home() {
                 {">"}
               </button>
             </div>
-            <span className="text-xs font-medium text-[#69655c]">{dataFileName}</span>
+            <span className="text-xs font-medium text-[#69655c]">{status}</span>
           </div>
         </div>
       </section>
@@ -358,9 +398,7 @@ export default function Home() {
         <form onSubmit={addTransaction} className="panel animate-rise h-fit p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Add transaction</h2>
-            <span className="rounded-md bg-[#eff8f2] px-2.5 py-1 text-xs font-medium text-[#24734f]">
-              {form.type}
-            </span>
+            <span className="type-pill income">{form.type}</span>
           </div>
 
           <div className="mt-5 grid gap-4">
@@ -401,8 +439,8 @@ export default function Home() {
             <Field label="Notes">
               <textarea className="field min-h-20 resize-y" name="notes" value={form.notes} onChange={(event) => updateForm(event.target.name, event.target.value)} placeholder="Invoice, supplier, or customer notes" />
             </Field>
-            <button type="submit" className="primary-button">
-              Add transaction
+            <button type="submit" className="primary-button" disabled={isLoading}>
+              {isLoading ? "Working..." : "Add transaction"}
             </button>
           </div>
         </form>
@@ -526,7 +564,7 @@ export default function Home() {
                         <td className="px-4 py-3">{item.paymentMethod}</td>
                         <td className="px-4 py-3 text-[#69655c]">{item.notes}</td>
                         <td className="px-4 py-3 text-right">
-                          <button type="button" onClick={() => removeTransaction(item.id)} className="delete-button">
+                          <button type="button" onClick={() => void removeTransaction(item.id)} className="delete-button">
                             Delete
                           </button>
                         </td>
