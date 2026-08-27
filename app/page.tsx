@@ -48,8 +48,24 @@ const paymentMethods = ["Bank Transfer", "Cash", "Card", "Other"];
 
 const today = new Date().toISOString().slice(0, 10);
 const currentMonth = today.slice(0, 7);
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+const rawSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+function normalizeSupabaseUrl(value: string | undefined) {
+  if (!value) {
+    return undefined;
+  }
+
+  const cleanValue = value.replace(/\/$/, "");
+
+  if (cleanValue.startsWith("http://") || cleanValue.startsWith("https://")) {
+    return cleanValue;
+  }
+
+  return `https://${cleanValue}.supabase.co`;
+}
+
+const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
 const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 const initialForm = {
