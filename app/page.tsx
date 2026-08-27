@@ -383,6 +383,11 @@ export default function Home() {
     URL.revokeObjectURL(url);
   }
 
+  async function logout() {
+    await fetch("/api/logout", { method: "POST" });
+    window.location.href = "/login";
+  }
+
   return (
     <main className="min-h-screen bg-[#f8f7f2] text-[#11110f]">
       <section className="mx-auto max-w-7xl px-4 pb-6 pt-5 sm:px-6 lg:px-8">
@@ -400,6 +405,9 @@ export default function Home() {
               </button>
               <button type="button" onClick={exportCsv} className="secondary-button">
                 Export CSV
+              </button>
+              <button type="button" onClick={logout} className="secondary-button">
+                Sign out
               </button>
             </div>
             <div className="month-control">

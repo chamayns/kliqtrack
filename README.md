@@ -17,6 +17,18 @@ Transactions are stored in Supabase, not in the browser and not in OpenAI Sites.
 When you add or delete a transaction, the app writes directly to the Supabase
 `transactions` table.
 
+## Login
+
+The app has a simple password gate configured with environment variables:
+
+```bash
+KLIQ_ADMIN_USERNAME=admin
+KLIQ_ADMIN_PASSWORD=your-admin-password
+```
+
+This protects the tracker page with an HTTP-only session cookie. For stronger
+multi-user security later, replace this with Supabase Auth.
+
 ## Supabase Setup
 
 1. Create a Supabase project.
@@ -28,6 +40,8 @@ When you add or delete a transaction, the app writes directly to the Supabase
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+KLIQ_ADMIN_USERNAME=admin
+KLIQ_ADMIN_PASSWORD=your-admin-password
 ```
 
 The current SQL uses anon access for read, insert, and delete. That is simple
@@ -50,6 +64,8 @@ Open `http://localhost:3000`.
 3. Add these environment variables in Vercel:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `KLIQ_ADMIN_USERNAME`
+   - `KLIQ_ADMIN_PASSWORD`
 4. Deploy.
 
 ## Useful Commands

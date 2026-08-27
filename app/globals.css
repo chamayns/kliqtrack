@@ -17,6 +17,25 @@ body {
   color: var(--foreground);
 }
 
+.login-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background: #f8f7f2;
+  padding: 1.5rem;
+}
+
+.login-panel {
+  display: grid;
+  width: min(100%, 390px);
+  gap: 2rem;
+  border: 1px solid #ded9cd;
+  border-radius: 24px;
+  background: rgba(255, 254, 249, 0.94);
+  padding: 2rem;
+  box-shadow: 0 24px 70px rgba(31, 27, 20, 0.08);
+}
+
 button,
 input,
 select,
