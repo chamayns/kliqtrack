@@ -118,8 +118,24 @@ async function supabaseRequest<T>(path: string, init?: RequestInit): Promise<T> 
   });
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || "Supabase request failed");
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      const body = await response.json().catch(() => null);
+      const message =
+        body?.message || body?.error_description || body?.error || "Supabase request failed";
+      throw new Error(String(message));
+    }
+
+    if (response.status === 404) {
+      throw new Error("Could not find the Supabase table. Check the Supabase URL and run supabase/schema.sql.");
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      throw new Error("Supabase rejected the request. Check the anon key and table policies.");
+    }
+
+    throw new Error(`Supabase request failed (${response.status})`);
   }
 
   if (response.status === 204) {
@@ -127,6 +143,22 @@ async function supabaseRequest<T>(path: string, init?: RequestInit): Promise<T> 
   }
 
   return response.json() as Promise<T>;
+}
+
+function friendlyError(error: unknown, fallback: string) {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  if (error.message.includes("<!DOCTYPE") || error.message.includes("<html")) {
+    return "Could not connect to Supabase. Check NEXT_PUBLIC_SUPABASE_URL in Vercel.";
+  }
+
+  if (error.message === "Failed to fetch") {
+    return "Could not reach Supabase. Check the project URL and browser network access.";
+  }
+
+  return error.message.slice(0, 180);
 }
 
 export default function Home() {
@@ -162,7 +194,7 @@ export default function Home() {
       setTransactions(records.map(fromSupabase));
       setStatus("Synced with Supabase");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not load transactions");
+      setStatus(friendlyError(error, "Could not load transactions"));
     } finally {
       setIsLoading(false);
     }
@@ -274,7 +306,7 @@ export default function Home() {
       }));
       setStatus("Saved to Supabase");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not save transaction");
+      setStatus(friendlyError(error, "Could not save transaction"));
     } finally {
       setIsLoading(false);
     }
@@ -293,7 +325,7 @@ export default function Home() {
       setTransactions((current) => current.filter((item) => item.id !== id));
       setStatus("Deleted from Supabase");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not delete transaction");
+      setStatus(friendlyError(error, "Could not delete transaction"));
     } finally {
       setIsLoading(false);
     }
@@ -378,7 +410,7 @@ export default function Home() {
                 {">"}
               </button>
             </div>
-            <span className="text-xs font-medium text-[#69655c]">{status}</span>
+            <span className="max-w-sm truncate text-xs font-medium text-[#69655c]">{status}</span>
           </div>
         </div>
       </section>
