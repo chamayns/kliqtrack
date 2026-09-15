@@ -508,7 +508,7 @@ export default function Home() {
                 inputMode="numeric"
                 value={formatIdrInput(form.amount)}
                 onChange={(event) => updateForm(event.target.name, event.target.value)}
-                placeholder="25.750"
+                placeholder="0"
               />
             </Field>
             <Field label="Payment Method">
