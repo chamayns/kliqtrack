@@ -85,6 +85,22 @@ const idr = new Intl.NumberFormat("id-ID", {
   maximumFractionDigits: 0,
 });
 
+const idrInput = new Intl.NumberFormat("id-ID", {
+  maximumFractionDigits: 0,
+});
+
+function parseIdrInput(value: string) {
+  return value.replace(/[^\d]/g, "");
+}
+
+function formatIdrInput(value: string) {
+  if (!value) {
+    return "";
+  }
+
+  return idrInput.format(Number(value));
+}
+
 function categoryOptions(type: TransactionType) {
   return type === "Income" ? incomeCategories : expenseCategories;
 }
@@ -276,7 +292,10 @@ export default function Home() {
       return;
     }
 
-    setForm((current) => ({ ...current, [name]: value }));
+    setForm((current) => ({
+      ...current,
+      [name]: name === "amount" ? parseIdrInput(value) : value,
+    }));
   }
 
   async function addTransaction(event: FormEvent<HTMLFormElement>) {
@@ -483,7 +502,14 @@ export default function Home() {
               </select>
             </Field>
             <Field label="Amount (IDR)">
-              <input className="field" name="amount" type="number" min="0" step="1000" value={form.amount} onChange={(event) => updateForm(event.target.name, event.target.value)} placeholder="0" />
+              <input
+                className="field"
+                name="amount"
+                inputMode="numeric"
+                value={formatIdrInput(form.amount)}
+                onChange={(event) => updateForm(event.target.name, event.target.value)}
+                placeholder="25.750"
+              />
             </Field>
             <Field label="Payment Method">
               <select className="field" name="paymentMethod" value={form.paymentMethod} onChange={(event) => updateForm(event.target.name, event.target.value)}>
@@ -597,7 +623,7 @@ export default function Home() {
                     <th className="px-4 py-3">Type</th>
                     <th className="px-4 py-3">Category</th>
                     <th className="px-4 py-3 text-right">Qty</th>
-                    <th className="px-4 py-3 text-right">Amount</th>
+                    <th className="px-4 py-3 text-right">Amount (IDR)</th>
                     <th className="px-4 py-3">Payment</th>
                     <th className="px-4 py-3">Notes</th>
                     <th className="px-4 py-3"> </th>
