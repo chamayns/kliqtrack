@@ -38,6 +38,8 @@ type Filters = {
 const expenseCategories = [
   "Acrylic (Print & Cut)",
   "NFC Chips",
+  "NFC Card",
+  "Card Printing",
   "Transportation",
   "Additional Expenses",
 ];
